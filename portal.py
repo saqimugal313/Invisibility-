@@ -87,112 +87,67 @@ class Portal:
         h, w = frame.shape[:2]
         theme = self.themes[self.theme_idx]
 
-        # Rectangle Mask
+        # Smooth Rounded Rectangle Mask
         mask = np.zeros((h, w), dtype=np.uint8)
         rad_w = int(self.radius * 1.2)
         rad_h = self.radius
-        cv2.rectangle(
-            mask,
-            (self.x - rad_w, self.y - rad_h),
-            (self.x + rad_w, self.y + rad_h),
-            255,
-            -1
-        )
+        
+        radius_corner = int(self.radius * 0.4)
+        x1, y1 = self.x - rad_w, self.y - rad_h
+        x2, y2 = self.x + rad_w, self.y + rad_h
+        
+        cv2.rectangle(mask, (x1 + radius_corner, y1), (x2 - radius_corner, y2), 255, -1)
+        cv2.rectangle(mask, (x1, y1 + radius_corner), (x2, y2 - radius_corner), 255, -1)
+        cv2.circle(mask, (x1 + radius_corner, y1 + radius_corner), radius_corner, 255, -1)
+        cv2.circle(mask, (x2 - radius_corner, y1 + radius_corner), radius_corner, 255, -1)
+        cv2.circle(mask, (x1 + radius_corner, y2 - radius_corner), radius_corner, 255, -1)
+        cv2.circle(mask, (x2 - radius_corner, y2 - radius_corner), radius_corner, 255, -1)
 
         # Soft Edge
-        mask = cv2.GaussianBlur(mask, (15, 15), 4)
+        mask = cv2.GaussianBlur(mask, (21, 21), 6)
 
         alpha = mask.astype(np.float32) / 255.0
         alpha = cv2.merge([alpha, alpha, alpha])
 
-        bg = background.copy()
+        bg = background.copy().astype(np.float32)
+
+        # Match background lighting/color to live frame
+        # We sample the edges of the screen to avoid the user skewing the colors
+        mask_edges = np.zeros((h, w), dtype=np.uint8)
+        mask_edges[:15, :] = 255
+        mask_edges[-15:, :] = 255
+        mask_edges[:, :15] = 255
+        mask_edges[:, -15:] = 255
+        
+        # Only use edges that are outside the portal
+        mask_inv = (255 - (alpha[:, :, 0] * 255)).astype(np.uint8)
+        mask_edges = cv2.bitwise_and(mask_edges, mask_inv)
+        
+        if cv2.countNonZero(mask_edges) > 100:
+            mean_frame = cv2.mean(frame, mask=mask_edges)
+            mean_bg = cv2.mean(background, mask=mask_edges)
+            diff = np.array(mean_frame[:3]) - np.array(mean_bg[:3])
+            
+            # Smooth the color difference over time to avoid flickering
+            if not hasattr(self, 'color_diff_smooth'):
+                self.color_diff_smooth = diff
+            else:
+                self.color_diff_smooth = self.color_diff_smooth * 0.9 + diff * 0.1
+                
+            bg += self.color_diff_smooth
+            bg = np.clip(bg, 0, 255)
+
+        # Inner side color tint based on theme
+        color_tint = np.array(theme['inner_ring'], dtype=np.float32)
+        bg_tinted = bg * 0.85 + color_tint * 0.15
 
         result = (
             frame.astype(np.float32) * (1 - alpha)
-            + bg.astype(np.float32) * alpha
+            + bg_tinted * alpha
         )
         result = result.astype(np.uint8)
 
         # -------------------------
-        # Dynamic Pulsing Glow
-        # -------------------------
-        glow = result.copy()
-        pulse = math.sin(time.time() * 8.0) * 6.0
-        glow_color = theme['glow']
-
-        current_r = int(self.radius + 6 + pulse)
-        curr_w = int(current_r * 1.2)
-        curr_h = current_r
-        cv2.rectangle(
-            glow,
-            (self.x - curr_w, self.y - curr_h),
-            (self.x + curr_w, self.y + curr_h),
-            glow_color,
-            2,
-            cv2.LINE_AA
-        )
-
-        result = cv2.addWeighted(
-            glow,
-            0.35,
-            result,
-            0.65,
-            0
-        )
-
-        # -------------------------
-        # Swirling Particles
-        # -------------------------
-        if len(self.particles) < 60:
-            for _ in range(random.randint(1, 2)):
-                angle = random.uniform(0, 2 * math.pi)
-                speed = random.uniform(0.04, 0.12) * random.choice([-1, 1])
-                offset = random.uniform(-8, 8)
-                life = 1.0
-                color = random.choice(theme['particles'])
-                size = random.randint(2, 5)
-                self.particles.append({
-                    'angle': angle,
-                    'speed': speed,
-                    'offset': offset,
-                    'life': life,
-                    'color': color,
-                    'size': size
-                })
-
-        active_particles = []
-        for p in self.particles:
-            p['angle'] += p['speed']
-            p['life'] -= 0.035
-            p['offset'] += random.uniform(-0.2, 0.5)
-            
-            if p['life'] > 0:
-                active_particles.append(p)
-                r = self.radius + p['offset']
-                px = int(self.x + (r * 1.2) * math.cos(p['angle']))
-                py = int(self.y + r * math.sin(p['angle']))
-                
-                if 0 <= px < w and 0 <= py < h:
-                    sz = int(p['size'] * p['life'])
-                    if sz > 0:
-                        cv2.rectangle(result, (px - sz, py - sz), (px + sz, py + sz), p['color'], -1, cv2.LINE_AA)
-                        cv2.rectangle(result, (px - sz - 1, py - sz - 1), (px + sz + 1, py + sz + 1), p['color'], 1, cv2.LINE_AA)
-                        
-        self.particles = active_particles
-
-        # -------------------------
-        # Portal Outline
-        # -------------------------
-        rad_w = int(self.radius * 1.2)
-        rad_h = self.radius
-
-        cv2.rectangle(
-            result,
-            (self.x - rad_w, self.y - rad_h),
-            (self.x + rad_w, self.y + rad_h),
-            theme['main_ring'],
-            2,
-            cv2.LINE_AA
-        )
+        # Swirling Particles removed
 
         return result
