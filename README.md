@@ -113,12 +113,15 @@ screenshots/
 
 ## 👩‍💻 Developer
 
- 
+**Azhar Khan**  
+GitHub: [https://github.com/aksaqi313](https://github.com/aksaqi313)
+
 ---
 
 ## ⭐ Support
 
 If you like this project, consider giving it a ⭐ on GitHub.
-=======
-# Invisibility-
->>>>>>> origin/main
+
+---
+
+&copy; 2026 Azhar Khan. All rights reserved.
