@@ -3,7 +3,7 @@
   <img src=" " width="850">
 </p>
 
-# ✨ AI Magic Invisibility Portal
+# ✨ Invisibility Portal
 
 A real-time AI-powered invisibility portal built using **Python**, **OpenCV**, and **MediaPipe**. The portal follows the user's index finger, dynamically changes size based on finger distance, and reveals the captured background inside the portal to create a magical invisibility effect.
 
@@ -114,7 +114,7 @@ screenshots/
 ## 👩‍💻 Developer
 
 **Azhar Khan**  
-GitHub: [https://github.com/aksaqi313](https://github.com/aksaqi313)
+GitHub: [https://github.com/aksaqi313]
 
 ---
 
