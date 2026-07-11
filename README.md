@@ -5,7 +5,7 @@
 
 # ✨ Invisibility Portal
 
-A real-time AI-powered invisibility portal built using **Python**, **OpenCV**, and **MediaPipe**. The portal follows the user's index finger, dynamically changes size based on finger distance, and reveals the captured background inside the portal to create a magical invisibility effect.
+A real-time AI-powered invisibility portal built using **Python**, **OpenCV**, and **MediaPipe**. The portal follows the user's index finger, dynamically changes size based on finger distance, and reveals the captured background inside the portal to create a magical invisibility effect..............
 
 ---
 
@@ -27,6 +27,7 @@ A real-time AI-powered invisibility portal built using **Python**, **OpenCV**, a
 - OpenCV
 - MediaPipe
 - NumPy
+- pandas
 
 ---
 
